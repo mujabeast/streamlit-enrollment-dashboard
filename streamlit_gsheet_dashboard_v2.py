@@ -1,31 +1,32 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
 st.set_page_config(page_title="📊 AY2025 Live Dashboard", layout="wide")
-st.title("📈 Tuition Centre Enrollment Dashboard – AY2025 (Google Sheets Live)")
+st.title("📈 Tuition Centre Enrollment Dashboard – AY2025 (Live from Google Sheets)")
 
-# Google Sheet URL with encoded sheet name
+# Properly encoded Google Sheet CSV export URL
 sheet_url = 'https://docs.google.com/spreadsheets/d/1JlYsQdyKyvUgq3Cv-KwZxW3O-Lktzy4p30L7WFk5W1M/gviz/tq?tqx=out:csv&sheet=ay2025%20daily%20tracking'
 
 # Try loading the data
 try:
     df_raw = pd.read_csv(sheet_url)
 
-    # Clean and parse structure
+    # Clean structure: standardize column headers
     df_raw.columns = df_raw.columns.str.strip()
     date_col = df_raw.columns[0]
-    df = df_raw.copy()
-    df = df[df[date_col].notna() & ~df[date_col].str.contains("Date", case=False, na=False)]
+    df = df_raw[df_raw[date_col].notna()]
+    df = df[~df[date_col].str.contains("Date", case=False, na=False)]
     df = df.rename(columns={date_col: "Date"})
     df = df[['Date'] + [col for col in df.columns if any(x in col.upper() for x in ["PR1", "PR2", "TP", "WD", "CCK", "JW", "OL"])]]
+
+    # Convert all center data to numbers
     for col in df.columns[1:]:
         df[col] = pd.to_numeric(df[col], errors='coerce')
     df = df.dropna()
 
-    # Totals
+    # Last row total (AY2025 current)
     last_row = df.iloc[-1]
     ay2025_total = last_row[1:]
     ay2024_total = pd.Series({
@@ -36,17 +37,18 @@ try:
     compare_df = pd.DataFrame({'AY2024': ay2024_total, 'AY2025': ay2025_with_sn}).reset_index().rename(columns={'index': 'Centre'})
     compare_df['Percent Change'] = ((compare_df['AY2025'] - compare_df['AY2024']) / compare_df['AY2024'] * 100).round(2)
 
-    # Growth rates
+    # Weekly growth rates
     growth = df.copy()
     for col in growth.columns[1:]:
         growth[col] = growth[col].pct_change() * 100
 
-    st.success("✅ Live data loaded successfully from Google Sheets!")
+    st.success("✅ Live data loaded from Google Sheets!")
 
-    # Visuals
+    # Visualization 1: Weekly Trend
     st.subheader("📈 Weekly Enrollment Trends")
     st.plotly_chart(px.line(df, x='Date', y=df.columns[1:], markers=True), use_container_width=True)
 
+    # Comparison charts
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("📊 Total Enrollments AY2024 vs AY2025")
@@ -55,8 +57,9 @@ try:
         st.subheader("📉 % Change in Enrollments")
         st.plotly_chart(px.bar(compare_df.dropna(), x='Centre', y='Percent Change'), use_container_width=True)
 
+    # Visualization 3: Growth Rate Trends
     st.subheader("📈 Weekly Growth Rate Trends by Centre")
     st.plotly_chart(px.line(growth, x='Date', y=growth.columns[1:]), use_container_width=True)
 
 except Exception as e:
-    st.error(f"Failed to load or parse Google Sheet: {e}")
+    st.error(f"❌ Failed to load or parse Google Sheet: {e}")
