@@ -1,4 +1,5 @@
-
+# Fixed version with .append() replaced by pd.concat() for compatibility with latest pandas
+corrected_code = """
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -32,7 +33,7 @@ try:
         'PR1': 361, 'PR2': 157, 'TP': 406, 'WD': 97,
         'CCK': 196, 'JW': 297, 'OL': 498, 'SN': 82
     })
-    ay2025_with_sn = ay2025_total.append(pd.Series({'SN': None}))
+    ay2025_with_sn = pd.concat([ay2025_total, pd.Series({'SN': None})])
     compare_df = pd.DataFrame({'AY2024': ay2024_total, 'AY2025': ay2025_with_sn}).reset_index().rename(columns={'index': 'Centre'})
     compare_df['Percent Change'] = ((compare_df['AY2025'] - compare_df['AY2024']) / compare_df['AY2024'] * 100).round(2)
 
@@ -60,3 +61,11 @@ try:
 
 except Exception as e:
     st.error(f"Failed to load or parse Google Sheet: {e}")
+"""
+
+# Save corrected file
+corrected_path = "/mnt/data/streamlit_gsheet_dashboard_v2.py"
+with open(corrected_path, "w") as f:
+    f.write(corrected_code)
+
+corrected_path
